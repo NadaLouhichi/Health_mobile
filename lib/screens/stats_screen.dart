@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import '../repositories/health_repository.dart';
 import '../models/health_entry.dart';
+import 'add_entry_screen.dart'; // 👈 make sure this import exists
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -27,20 +28,38 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(title: const Text('Santé & Fitness')),
       body: entries.isEmpty
           ? const Center(child: Text('Aucune donnée disponible'))
-          : ListView.builder(
-              itemCount: entries.length,
-              itemBuilder: (context, index) {
-                final entry = entries[index];
-                return ListTile(
-                  title: Text('BMI: ${entry.bmi.toStringAsFixed(2)}'),
-                  subtitle: Text(
-                      'Calories brûlées: ${entry.caloriesBurned}, consommées: ${entry.caloriesConsumed}'),
-                  trailing: Text('${entry.date.day}/${entry.date.month}/${entry.date.year}'),
-                );
-              },
+          : RefreshIndicator(
+              // 👈 optional pull-to-refresh
+              onRefresh: loadEntries,
+              child: ListView.builder(
+                itemCount: entries.length,
+                itemBuilder: (context, index) {
+                  final entry = entries[index];
+                  return ListTile(
+                    title: Text('BMI: ${entry.bmi.toStringAsFixed(2)}'),
+                    subtitle: Text(
+                      'Calories brûlées: ${entry.caloriesBurned}, consommées: ${entry.caloriesConsumed}',
+                    ),
+                    trailing: Text(
+                      '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                    ),
+                  );
+                },
+              ),
             ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () async {
+          final shouldRefresh = await Navigator.push(
+            context,
+            MaterialPageRoute(builder: (context) => const AddEntryScreen()),
+          );
+          if (shouldRefresh == true) loadEntries(); // 👈 refresh after return
+        },
+        child: const Icon(Icons.add),
+      ),
     );
   }
 }

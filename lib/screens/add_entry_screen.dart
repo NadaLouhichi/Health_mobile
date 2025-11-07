@@ -27,8 +27,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     final duration = int.tryParse(_durationController.text);
     final exercise = _exerciseController.text.trim();
 
-    if (weight == null || height == null || duration == null || exercise.isEmpty) {
-      setState(() => _message = 'Veuillez remplir tous les champs correctement.');
+    if (weight == null ||
+        height == null ||
+        duration == null ||
+        exercise.isEmpty) {
+      setState(
+        () => _message = 'Veuillez remplir tous les champs correctement.',
+      );
       return;
     }
 
@@ -41,10 +46,12 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       date: DateTime.now(),
       bmi: bmi,
       caloriesBurned: calories,
-      caloriesConsumed: 0, // could later link with food logs
+      caloriesConsumed: 0,
     );
 
     await repo.addHealthEntry(entry);
+    final all = await repo.getAllEntries();
+    print('✅ Total entries saved: ${all.length}'); // confirmation log
 
     setState(() {
       _saving = false;
@@ -55,6 +62,8 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     _heightController.clear();
     _exerciseController.clear();
     _durationController.clear();
+
+    Navigator.pop(context, true); // 👈 tell previous screen to refresh
   }
 
   @override
@@ -78,7 +87,10 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
               ),
               TextField(
                 controller: _exerciseController,
-                decoration: const InputDecoration(labelText: 'Type d\'exercice (Running, Cycling...)'),
+                decoration: const InputDecoration(
+                  labelText:
+                      'Type d\'exercice (Running, Cycling, Swimming, Running)',
+                ),
               ),
               TextField(
                 controller: _durationController,
@@ -94,8 +106,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                     ),
               const SizedBox(height: 20),
               if (_message != null)
-                Text(_message!,
-                    style: const TextStyle(color: Colors.green, fontWeight: FontWeight.bold)),
+                Text(
+                  _message!,
+                  style: const TextStyle(
+                    color: Colors.green,
+                    fontWeight: FontWeight.bold,
+                  ),
+                ),
             ],
           ),
         ),
