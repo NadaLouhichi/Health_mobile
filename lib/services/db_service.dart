@@ -1,98 +1,98 @@
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:hive_flutter/hive_flutter.dart';
 import 'package:path/path.dart';
-import 'package:sqflite/sqflite.dart';
 import 'package:sqflite_common_ffi/sqflite_ffi.dart';
 import '../models/health_entry.dart';
 
 class DBService {
-  static Database? _db;
+  static const String hiveBoxName = 'health_entries';
 
-  Future<Database> get database async {
-    if (_db != null) return _db!;
-    _db = await _initDb();
-    return _db!;
-  }
+  // SQLite instance for Mobile/Desktop
+  static Database? _sqliteDb;
 
-  Future<Database> _initDb() async {
+  // Hive box for Web
+  static Box<HealthEntry>? _hiveBox;
+
+  Future<void> init() async {
     if (kIsWeb) {
-      throw UnsupportedError('SQLite is not supported on web.');
-    }
+      // Hive initialization for Web
+      await Hive.initFlutter();
+      if (!Hive.isAdapterRegistered(0)) {
+        Hive.registerAdapter(HealthEntryAdapter());
+      }
+      _hiveBox = await Hive.openBox<HealthEntry>(hiveBoxName);
+    } else {
+      // SQLite initialization for Mobile/Desktop
+      if (!Platform.isAndroid && !Platform.isIOS) {
+        sqfliteFfiInit();
+        databaseFactory = databaseFactoryFfi;
+      }
 
-    // ✅ Handle desktop
-    if (!Platform.isAndroid && !Platform.isIOS) {
-      sqfliteFfiInit();
-      databaseFactory = databaseFactoryFfi;
-      final dbPath = await databaseFactoryFfi.getDatabasesPath();
+      final dbPath = await getDatabasesPath();
       final path = join(dbPath, 'health_tracker.db');
-      return await databaseFactoryFfi.openDatabase(
+
+      _sqliteDb = await openDatabase(
         path,
-        options: OpenDatabaseOptions(
-          version: 1,
-          onCreate: (db, version) async {
-            await db.execute('''
-              CREATE TABLE health_entries (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                date TEXT,
-                bmi REAL,
-                caloriesBurned REAL,
-                caloriesConsumed REAL
-              )
-            ''');
-          },
-        ),
+        version: 1,
+        onCreate: (db, version) async {
+          await db.execute('''
+            CREATE TABLE health_entries (
+              id INTEGER PRIMARY KEY AUTOINCREMENT,
+              date TEXT,
+              bmi REAL,
+              caloriesBurned REAL,
+              caloriesConsumed REAL
+            )
+          ''');
+        },
       );
     }
-
-    // ✅ Handle mobile
-    final dbPath = await getDatabasesPath();
-    final path = join(dbPath, 'health_tracker.db');
-    return await openDatabase(
-      path,
-      version: 1,
-      onCreate: (db, version) async {
-        await db.execute('''
-          CREATE TABLE health_entries (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            date TEXT,
-            bmi REAL,
-            caloriesBurned REAL,
-            caloriesConsumed REAL
-          )
-        ''');
-      },
-    );
   }
 
-
-
   // CREATE
-  Future<int> insertHealthEntry(HealthEntry entry) async {
-    final db = await database;
-    return await db.insert('health_entries', entry.toMap());
+  Future<void> insertHealthEntry(HealthEntry entry) async {
+    if (kIsWeb) {
+      await _hiveBox!.add(entry);
+    } else {
+      await _sqliteDb!.insert('health_entries', entry.toMap());
+    }
   }
 
   // READ
   Future<List<HealthEntry>> getAllEntries() async {
-    final db = await database;
-    final maps = await db.query('health_entries', orderBy: 'date DESC');
-    return maps.map((e) => HealthEntry.fromMap(e)).toList();
+    if (kIsWeb) {
+      return _hiveBox!.values.toList().cast<HealthEntry>();
+    } else {
+      final maps = await _sqliteDb!.query('health_entries', orderBy: 'date DESC');
+      return maps.map((e) => HealthEntry.fromMap(e)).toList();
+    }
   }
 
   // UPDATE
-  Future<int> updateHealthEntry(HealthEntry entry) async {
-    final db = await database;
-    return await db.update(
-      'health_entries',
-      entry.toMap(),
-      where: 'id = ?',
-      whereArgs: [entry.id],
-    );
+  Future<void> updateHealthEntry(HealthEntry entry) async {
+    if (kIsWeb) {
+      await entry.save();
+    } else {
+      await _sqliteDb!.update(
+        'health_entries',
+        entry.toMap(),
+        where: 'id = ?',
+        whereArgs: [entry.id],
+      );
+    }
   }
 
   // DELETE
-  Future<int> deleteHealthEntry(int id) async {
-    final db = await database;
-    return await db.delete('health_entries', where: 'id = ?', whereArgs: [id]);
+  Future<void> deleteHealthEntry(int id) async {
+    if (kIsWeb) {
+      final entry = _hiveBox!.values.firstWhere(
+        (e) => e.id == id,
+        orElse: () => throw Exception('Entry not found'),
+      );
+      await entry.delete();
+    } else {
+      await _sqliteDb!.delete('health_entries', where: 'id = ?', whereArgs: [id]);
+    }
   }
 }

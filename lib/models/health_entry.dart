@@ -1,9 +1,23 @@
-class HealthEntry {
-  final int? id;
-  final DateTime date;
-  final double bmi;
-  final double caloriesBurned;
-  final double caloriesConsumed;
+import 'package:hive/hive.dart';
+
+part 'health_entry.g.dart';
+
+@HiveType(typeId: 0)
+class HealthEntry extends HiveObject {
+  @HiveField(0)
+  int? id;
+
+  @HiveField(1)
+  DateTime date;
+
+  @HiveField(2)
+  double bmi;
+
+  @HiveField(3)
+  double caloriesBurned;
+
+  @HiveField(4)
+  double caloriesConsumed;
 
   HealthEntry({
     this.id,
@@ -13,6 +27,7 @@ class HealthEntry {
     required this.caloriesConsumed,
   });
 
+  // For SQLite
   Map<String, dynamic> toMap() => {
         'id': id,
         'date': date.toIso8601String(),

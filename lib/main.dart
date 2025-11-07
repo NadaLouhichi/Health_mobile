@@ -4,31 +4,24 @@ import 'screens/home_screen.dart';
 import 'screens/exercise_screen.dart';
 import 'screens/food_screen.dart';
 import 'screens/stats_screen.dart';
-import 'package:hive_flutter/hive_flutter.dart';
-import 'package:path_provider/path_provider.dart';
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'services/db_service.dart'; // <- your new cross-platform DBService
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  // Hive initialization
-  if (kIsWeb) {
-    await Hive.initFlutter(); // Web-friendly initialization
-  } else {
-    final dir = await getApplicationDocumentsDirectory();
-    await Hive.initFlutter(dir.path); // Mobile/Desktop
-  }
-
   // Load environment variables
   await dotenv.load(fileName: ".env");
+
+  // Initialize cross-platform database
+  final dbService = DBService();
+  await dbService.init();
 
   // Run the app
   runApp(const FitnessApp());
 }
 
 class FitnessApp extends StatefulWidget {
-  const FitnessApp({Key? key}) : super(key: key);
-
+ const FitnessApp({super.key});
   @override
   State<FitnessApp> createState() => _FitnessAppState();
 }

@@ -1,4 +1,5 @@
 class FoodItem {
+  final String? id;
   final String name;
   final double? calories;
   final double? proteins;
@@ -6,6 +7,7 @@ class FoodItem {
   final double? fats;
 
   FoodItem({
+    this.id,
     required this.name,
     this.calories,
     this.proteins,
@@ -16,6 +18,7 @@ class FoodItem {
   factory FoodItem.fromJson(Map<String, dynamic> json) {
     final nutriments = json['product']?['nutriments'] ?? {};
     return FoodItem(
+      id: json['product']?['_id'] ?? json['product']?['code'],
       name: json['product']?['product_name'] ?? 'Unknown',
       calories: (nutriments['energy-kcal_100g'] ?? 0).toDouble(),
       proteins: (nutriments['proteins_100g'] ?? 0).toDouble(),
