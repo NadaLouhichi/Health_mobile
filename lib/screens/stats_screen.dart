@@ -40,9 +40,27 @@ class _StatsScreenState extends State<StatsScreen> {
                   final entry = entries[index];
                   return ListTile(
                     title: Text('BMI: ${entry.bmi.toStringAsFixed(2)}'),
-                    subtitle: Text(
-                      'Calories brûlées: ${entry.caloriesBurned}, consommées: ${entry.caloriesConsumed}',
+                    subtitle: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Genre: ${entry.gender}, Âge: ${entry.age}, Taille: ${entry.height} cm, Poids: ${entry.weight} kg',
+                        ),
+                        if (entry.caloriesBurned > 0)
+                          Text(
+                            'Calories brûlées: ${entry.caloriesBurned.toStringAsFixed(1)} kcal',
+                          ),
+                        Text(
+                          'Calories consommées: ${entry.caloriesConsumed.toStringAsFixed(1)} kcal',
+                        ),
+                        Text('BMR: ${entry.bmr.toStringAsFixed(1)} kcal'),
+                        Text(
+                          'Besoins quotidiens: ${entry.dailyCalories.toStringAsFixed(1)} kcal',
+                        ),
+                        const SizedBox(height: 4),
+                      ],
                     ),
+
                     trailing: Text(
                       '${entry.date.day}/${entry.date.month}/${entry.date.year}',
                     ),

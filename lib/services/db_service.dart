@@ -42,7 +42,9 @@ class DBService {
               date TEXT,
               bmi REAL,
               caloriesBurned REAL,
-              caloriesConsumed REAL
+              caloriesConsumed REAL,
+              bmr REAL,
+              dailyCalories REAL
             )
           ''');
         },
