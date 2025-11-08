@@ -1,7 +1,8 @@
 import 'package:flutter/material.dart';
 import '../repositories/health_repository.dart';
 import '../models/health_entry.dart';
-import 'add_entry_screen.dart'; // 👈 make sure this import exists
+import 'add_entry_screen.dart';
+import '../services/export_service.dart';
 
 class StatsScreen extends StatefulWidget {
   const StatsScreen({super.key});
@@ -28,7 +29,27 @@ class _StatsScreenState extends State<StatsScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      appBar: AppBar(title: const Text('Santé & Fitness')),
+      appBar: AppBar(
+        title: const Text('Santé & Fitness'),
+        actions: [
+          if (entries.isNotEmpty)
+            IconButton(
+              icon: const Icon(Icons.download),
+              tooltip: 'Télécharger le rapport PDF',
+              onPressed: () async {
+                await ExportService.generateHealthReport(entries);
+                if (mounted) {
+                  ScaffoldMessenger.of(context).showSnackBar(
+                    const SnackBar(
+                      content: Text('Rapport téléchargé avec succès ✅'),
+                    ),
+                  );
+                }
+              },
+            ),
+        ],
+      ),
+
       body: entries.isEmpty
           ? const Center(child: Text('Aucune donnée disponible'))
           : RefreshIndicator(
