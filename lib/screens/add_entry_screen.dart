@@ -4,7 +4,8 @@ import '../models/health_entry.dart';
 import '../services/business_logic.dart';
 
 class AddEntryScreen extends StatefulWidget {
-  const AddEntryScreen({super.key});
+  final HealthEntry? entry;
+  const AddEntryScreen({super.key, this.entry});
 
   @override
   State<AddEntryScreen> createState() => _AddEntryScreenState();
@@ -24,6 +25,19 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
   bool _saving = false;
   String? _message;
+
+  @override
+  void initState() {
+    super.initState();
+    // Prefill fields if editing
+    if (widget.entry != null) {
+      _weightController.text = widget.entry!.weight.toString();
+      _heightController.text = widget.entry!.height.toString();
+      ageController.text = widget.entry!.age.toString();
+      selectedGender = widget.entry!.gender;
+      selectedActivity = widget.entry!.activityLevel;
+    }
+  }
 
   Future<void> _saveEntry() async {
     final weight = double.tryParse(_weightController.text);
@@ -55,11 +69,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     final bmr = calculateBMR(gender, weight, height, age);
     final daily = dailyCalories(bmr, selectedActivity ?? 'light');
 
+    // 🟩 If editing, keep the same date and ID
     final entry = HealthEntry(
-      date: DateTime.now(),
+      id: widget.entry?.id,
+      date: widget.entry?.date ?? DateTime.now(),
       bmi: bmi,
       caloriesBurned: caloriesBurned,
-      caloriesConsumed: 0,
+      caloriesConsumed: widget.entry?.caloriesConsumed ?? 0,
       bmr: bmr,
       dailyCalories: daily,
       gender: gender,
@@ -69,23 +85,21 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       weight: weight,
     );
 
-    await repo.addHealthEntry(entry);
+    // 🟢 Add or Update
+    if (widget.entry == null) {
+      await repo.addHealthEntry(entry);
+    } else {
+      await repo.updateHealthEntry(entry);
+    }
+
     final all = await repo.getAllEntries();
     print('✅ Total entries saved: ${all.length}');
 
     setState(() {
       _saving = false;
-      _message = 'Entrée enregistrée avec succès ✅';
-    });
-
-    _weightController.clear();
-    _heightController.clear();
-    _durationController.clear();
-    ageController.clear();
-    setState(() {
-      selectedGender = null;
-      selectedExercise = null;
-      selectedActivity = null;
+      _message = widget.entry == null
+          ? 'Entrée enregistrée avec succès ✅'
+          : 'Entrée mise à jour avec succès ✅';
     });
 
     Navigator.pop(context, true);
@@ -93,30 +107,30 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
 
   @override
   Widget build(BuildContext context) {
+    final isEditing = widget.entry != null;
+
     return Scaffold(
-      appBar: AppBar(title: const Text('Nouvelle Entrée Santé')),
+      appBar: AppBar(
+        title: Text(
+          isEditing ? 'Modifier Entrée Santé' : 'Nouvelle Entrée Santé',
+        ),
+      ),
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
           child: Column(
             children: [
-              // Weight
               TextField(
                 controller: _weightController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Poids (kg)'),
               ),
-
-              // Height
               TextField(
                 controller: _heightController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Taille (cm)'),
               ),
-
               const SizedBox(height: 10),
-
-              // Exercise type dropdown
               DropdownButtonFormField<String>(
                 value: selectedExercise,
                 items: const [
@@ -133,10 +147,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   labelText: 'Type d\'exercice',
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // Duration (optional)
               TextField(
                 controller: _durationController,
                 keyboardType: TextInputType.number,
@@ -144,10 +155,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   labelText: 'Durée (minutes, optional)',
                 ),
               ),
-
               const SizedBox(height: 10),
-
-              // Gender dropdown
               DropdownButtonFormField<String>(
                 value: selectedGender,
                 items: const [
@@ -157,19 +165,13 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 onChanged: (value) => setState(() => selectedGender = value),
                 decoration: const InputDecoration(labelText: 'Genre'),
               ),
-
               const SizedBox(height: 10),
-
-              // Age input
               TextField(
                 controller: ageController,
                 keyboardType: TextInputType.number,
                 decoration: const InputDecoration(labelText: 'Âge (en années)'),
               ),
-
               const SizedBox(height: 10),
-
-              // Activity level dropdown
               DropdownButtonFormField<String>(
                 value: selectedActivity,
                 items: const [
@@ -196,19 +198,14 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                   labelText: 'Niveau d\'activité',
                 ),
               ),
-
               const SizedBox(height: 20),
-
-              // Save button
               _saving
                   ? const CircularProgressIndicator()
                   : ElevatedButton(
                       onPressed: _saveEntry,
-                      child: const Text('Enregistrer'),
+                      child: Text(isEditing ? 'Mettre à jour' : 'Enregistrer'),
                     ),
-
               const SizedBox(height: 20),
-
               if (_message != null)
                 Text(
                   _message!,

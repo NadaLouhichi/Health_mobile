@@ -49,11 +49,9 @@ class _StatsScreenState extends State<StatsScreen> {
             ),
         ],
       ),
-
       body: entries.isEmpty
           ? const Center(child: Text('Aucune donnée disponible'))
           : RefreshIndicator(
-              // 👈 optional pull-to-refresh
               onRefresh: loadEntries,
               child: ListView.builder(
                 itemCount: entries.length,
@@ -71,9 +69,6 @@ class _StatsScreenState extends State<StatsScreen> {
                           Text(
                             'Calories brûlées: ${entry.caloriesBurned.toStringAsFixed(1)} kcal',
                           ),
-                        Text(
-                          'Calories consommées: ${entry.caloriesConsumed.toStringAsFixed(1)} kcal',
-                        ),
                         Text('BMR: ${entry.bmr.toStringAsFixed(1)} kcal'),
                         Text(
                           'Besoins quotidiens: ${entry.dailyCalories.toStringAsFixed(1)} kcal',
@@ -81,9 +76,55 @@ class _StatsScreenState extends State<StatsScreen> {
                         const SizedBox(height: 4),
                       ],
                     ),
-
-                    trailing: Text(
-                      '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                    trailing: PopupMenuButton<String>(
+                      onSelected: (value) async {
+                        if (value == 'edit') {
+                          final shouldRefresh = await Navigator.push(
+                            context,
+                            MaterialPageRoute(
+                              builder: (context) =>
+                                  AddEntryScreen(entry: entry),
+                            ),
+                          );
+                          if (shouldRefresh == true) loadEntries();
+                        } else if (value == 'delete') {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (_) => AlertDialog(
+                              title: const Text('Confirmer la suppression'),
+                              content: const Text(
+                                'Voulez-vous vraiment supprimer cette entrée ?',
+                              ),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.pop(context, false),
+                                  child: const Text('Annuler'),
+                                ),
+                                TextButton(
+                                  onPressed: () => Navigator.pop(context, true),
+                                  child: const Text('Supprimer'),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed == true) {
+                            await repo.deleteHealthEntry(entry.id!);
+                            loadEntries();
+                          }
+                        }
+                      },
+                      itemBuilder: (context) => const [
+                        PopupMenuItem(value: 'edit', child: Text('Modifier')),
+                        PopupMenuItem(
+                          value: 'delete',
+                          child: Text('Supprimer'),
+                        ),
+                      ],
+                      child: Text(
+                        '${entry.date.day}/${entry.date.month}/${entry.date.year}',
+                        style: const TextStyle(fontSize: 14),
+                      ),
                     ),
                   );
                 },
@@ -95,7 +136,7 @@ class _StatsScreenState extends State<StatsScreen> {
             context,
             MaterialPageRoute(builder: (context) => const AddEntryScreen()),
           );
-          if (shouldRefresh == true) loadEntries(); // 👈 refresh after return
+          if (shouldRefresh == true) loadEntries();
         },
         child: const Icon(Icons.add),
       ),
