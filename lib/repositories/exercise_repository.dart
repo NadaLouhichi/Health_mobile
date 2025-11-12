@@ -8,7 +8,7 @@ class ExerciseRepository {
     // 👇 Replace with your local IP when testing on mobile
     final baseUrl = kIsWeb
         ? 'http://127.0.0.1:5000/exercises'
-        : 'http://192.168.1.106:5000/exercises';
+        : 'http://10.0.2.2:5000/exercises';
 
     final url = Uri.parse('$baseUrl?limit=$limit');
     final res = await http.get(url);

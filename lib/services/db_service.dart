@@ -34,7 +34,7 @@ class DBService {
 
       _sqliteDb ??= await openDatabase(
         path,
-        version: 1,
+        version: 2, // Increment version if you ever change schema
         onCreate: (db, version) async {
           await db.execute('''
             CREATE TABLE health_entries (
@@ -44,9 +44,34 @@ class DBService {
               caloriesBurned REAL,
               caloriesConsumed REAL,
               bmr REAL,
-              dailyCalories REAL
+              dailyCalories REAL,
+              gender TEXT,
+              age INTEGER,
+              activityLevel TEXT,
+              height REAL,
+              weight REAL
             )
           ''');
+        },
+        onUpgrade: (db, oldVersion, newVersion) async {
+          if (oldVersion < 2) {
+            // Add missing columns if upgrading from old version
+            await db.execute(
+              'ALTER TABLE health_entries ADD COLUMN gender TEXT',
+            );
+            await db.execute(
+              'ALTER TABLE health_entries ADD COLUMN age INTEGER',
+            );
+            await db.execute(
+              'ALTER TABLE health_entries ADD COLUMN activityLevel TEXT',
+            );
+            await db.execute(
+              'ALTER TABLE health_entries ADD COLUMN height REAL',
+            );
+            await db.execute(
+              'ALTER TABLE health_entries ADD COLUMN weight REAL',
+            );
+          }
         },
       );
     }
