@@ -52,9 +52,13 @@ class ExportService {
 
     final pdfBytes = await pdf.save();
 
-    // Save PDF locally on Android/iOS
-    final output = await getApplicationDocumentsDirectory();
-    final file = File('${output.path}/rapport_sante.pdf');
+    // Save PDF in Downloads folder (publicly accessible)
+    final dir = Directory('/storage/emulated/0/Download/');
+    if (!await dir.exists()) {
+      await dir.create(recursive: true);
+    }
+
+    final file = File('${dir.path}/rapport_sante.pdf');
     await file.writeAsBytes(pdfBytes);
 
     print('PDF saved to: ${file.path}');
