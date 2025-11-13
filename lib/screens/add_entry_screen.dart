@@ -13,11 +13,12 @@ class AddEntryScreen extends StatefulWidget {
 
 class _AddEntryScreenState extends State<AddEntryScreen> {
   final repo = HealthRepository();
+  final _formKey = GlobalKey<FormState>();
 
   final _weightController = TextEditingController();
   final _heightController = TextEditingController();
   final _durationController = TextEditingController();
-  final ageController = TextEditingController();
+  final _ageController = TextEditingController();
 
   String? selectedGender;
   String? selectedExercise;
@@ -32,7 +33,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     if (widget.entry != null) {
       _weightController.text = widget.entry!.weight.toString();
       _heightController.text = widget.entry!.height.toString();
-      ageController.text = widget.entry!.age.toString();
+      _ageController.text = widget.entry!.age.toString();
       selectedGender = widget.entry!.gender;
       selectedActivity = widget.entry!.activityLevel;
       selectedExercise = widget.entry!.exerciseType;
@@ -41,37 +42,35 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     }
   }
 
-  Future<void> _saveEntry() async {
-    final weight = double.tryParse(_weightController.text);
-    final height = double.tryParse(_heightController.text);
-    final duration = int.tryParse(_durationController.text) ?? 0;
-    final exercise = selectedExercise ?? 'None';
-    final age = int.tryParse(ageController.text);
-    final gender = selectedGender;
+  @override
+  void dispose() {
+    _weightController.dispose();
+    _heightController.dispose();
+    _durationController.dispose();
+    _ageController.dispose();
+    super.dispose();
+  }
 
-    if (weight == null || height == null || age == null || gender == null) {
-      setState(() {
-        _message = 'Veuillez remplir tous les champs correctement.';
-      });
-      return;
-    }
+  Future<void> _saveEntry() async {
+    if (!_formKey.currentState!.validate()) return;
 
     setState(() => _saving = true);
 
-    // BMI
-    final bmi = calculateBMI(weight, height);
+    final weight = double.parse(_weightController.text);
+    final height = double.parse(_heightController.text);
+    final duration = int.tryParse(_durationController.text) ?? 0;
+    final exercise = selectedExercise ?? 'None';
+    final age = int.parse(_ageController.text);
+    final gender = selectedGender!;
 
-    // Calories burned (optional)
+    final bmi = calculateBMI(weight, height);
     double caloriesBurned = 0;
     if (exercise != 'None' && duration > 0) {
       caloriesBurned = calculateCalories(exercise, duration, weight);
     }
-
-    // BMR and daily calories
     final bmr = calculateBMR(gender, weight, height, age);
     final daily = dailyCalories(bmr, selectedActivity ?? 'light');
 
-    // 🟩 If editing, keep the same date and ID
     final entry = HealthEntry(
       id: widget.entry?.id,
       date: widget.entry?.date ?? DateTime.now(),
@@ -79,7 +78,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       caloriesBurned: caloriesBurned,
       caloriesBurnedDuration: duration,
       caloriesConsumed: widget.entry?.caloriesConsumed ?? 0,
-      exerciseType: selectedExercise ?? 'None',
+      exerciseType: exercise,
       bmr: bmr,
       dailyCalories: daily,
       gender: gender,
@@ -89,15 +88,11 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       weight: weight,
     );
 
-    // 🟢 Add or Update
     if (widget.entry == null) {
       await repo.addHealthEntry(entry);
     } else {
       await repo.updateHealthEntry(entry);
     }
-
-    final all = await repo.getAllEntries();
-    print('✅ Total entries saved: ${all.length}');
 
     setState(() {
       _saving = false;
@@ -107,6 +102,14 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
     });
 
     Navigator.pop(context, true);
+  }
+
+  InputDecoration _inputDecoration(String label) {
+    return InputDecoration(
+      labelText: label,
+      border: const OutlineInputBorder(),
+      errorStyle: const TextStyle(color: Colors.red),
+    );
   }
 
   @override
@@ -122,104 +125,158 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       body: Padding(
         padding: const EdgeInsets.all(16),
         child: SingleChildScrollView(
-          child: Column(
-            children: [
-              TextField(
-                controller: _weightController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Poids (kg)'),
-              ),
-              TextField(
-                controller: _heightController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Taille (cm)'),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: selectedExercise,
-                items: const [
-                  DropdownMenuItem(value: 'Running', child: Text('Running')),
-                  DropdownMenuItem(value: 'Cycling', child: Text('Cycling')),
-                  DropdownMenuItem(value: 'Walking', child: Text('Walking')),
-                  DropdownMenuItem(value: 'Swimming', child: Text('Swimming')),
-                  DropdownMenuItem(
-                    value: 'None',
-                    child: Text('Does not apply'),
-                  ),
-                ],
-                onChanged: (value) => setState(() => selectedExercise = value),
-                decoration: const InputDecoration(
-                  labelText: 'Type d\'exercice',
+          child: Form(
+            key: _formKey,
+            autovalidateMode: AutovalidateMode.onUserInteraction,
+            child: Column(
+              children: [
+                // Poids
+                TextFormField(
+                  controller: _weightController,
+                  keyboardType: TextInputType.number,
+                  decoration: _inputDecoration('Poids (kg)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Veuillez entrer le poids';
+                    final v = double.tryParse(value);
+                    if (v == null || v <= 0) return 'Poids invalide';
+                    if (v > 300) return 'Le poids ne doit pas dépasser 300 kg';
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: _durationController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(
-                  labelText: 'Durée (minutes, optional)',
+                const SizedBox(height: 10),
+
+                // Taille
+                TextFormField(
+                  controller: _heightController,
+                  keyboardType: TextInputType.number,
+                  decoration: _inputDecoration('Taille (cm)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Veuillez entrer la taille';
+                    final v = double.tryParse(value);
+                    if (v == null || v <= 0) return 'Taille invalide';
+                    if (v > 250) return 'La taille ne doit pas dépasser 250 cm';
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: selectedGender,
-                items: const [
-                  DropdownMenuItem(value: 'male', child: Text('Homme')),
-                  DropdownMenuItem(value: 'female', child: Text('Femme')),
-                ],
-                onChanged: (value) => setState(() => selectedGender = value),
-                decoration: const InputDecoration(labelText: 'Genre'),
-              ),
-              const SizedBox(height: 10),
-              TextField(
-                controller: ageController,
-                keyboardType: TextInputType.number,
-                decoration: const InputDecoration(labelText: 'Âge (en années)'),
-              ),
-              const SizedBox(height: 10),
-              DropdownButtonFormField<String>(
-                value: selectedActivity,
-                items: const [
-                  DropdownMenuItem(
-                    value: 'sedentary',
-                    child: Text('Sédentaire'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'light',
-                    child: Text('Légèrement actif'),
-                  ),
-                  DropdownMenuItem(
-                    value: 'moderate',
-                    child: Text('Modérément actif'),
-                  ),
-                  DropdownMenuItem(value: 'active', child: Text('Actif')),
-                  DropdownMenuItem(
-                    value: 'very_active',
-                    child: Text('Très actif'),
-                  ),
-                ],
-                onChanged: (value) => setState(() => selectedActivity = value),
-                decoration: const InputDecoration(
-                  labelText: 'Niveau d\'activité',
+                const SizedBox(height: 10),
+
+                // Durée
+                TextFormField(
+                  controller: _durationController,
+                  keyboardType: TextInputType.number,
+                  decoration: _inputDecoration('Durée (minutes, facultatif)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) return null;
+                    final v = int.tryParse(value);
+                    if (v == null || v < 0) return 'Durée invalide';
+                    if (v > 600)
+                      return 'La durée ne doit pas dépasser 600 minutes';
+                    return null;
+                  },
                 ),
-              ),
-              const SizedBox(height: 20),
-              _saving
-                  ? const CircularProgressIndicator()
-                  : ElevatedButton(
-                      onPressed: _saveEntry,
-                      child: Text(isEditing ? 'Mettre à jour' : 'Enregistrer'),
+                const SizedBox(height: 10),
+
+                // Exercise
+                DropdownButtonFormField<String>(
+                  value: selectedExercise,
+                  items: const [
+                    DropdownMenuItem(value: 'Running', child: Text('Running')),
+                    DropdownMenuItem(value: 'Cycling', child: Text('Cycling')),
+                    DropdownMenuItem(value: 'Walking', child: Text('Walking')),
+                    DropdownMenuItem(
+                      value: 'Swimming',
+                      child: Text('Swimming'),
                     ),
-              const SizedBox(height: 20),
-              if (_message != null)
-                Text(
-                  _message!,
-                  style: const TextStyle(
-                    color: Colors.green,
-                    fontWeight: FontWeight.bold,
-                  ),
+                    DropdownMenuItem(value: 'None', child: Text('None')),
+                  ],
+                  onChanged: (v) => setState(() => selectedExercise = v),
+                  decoration: _inputDecoration('Type d\'exercice'),
                 ),
-            ],
+                const SizedBox(height: 10),
+
+                // Genre
+                DropdownButtonFormField<String>(
+                  value: selectedGender,
+                  items: const [
+                    DropdownMenuItem(value: 'male', child: Text('Homme')),
+                    DropdownMenuItem(value: 'female', child: Text('Femme')),
+                  ],
+                  onChanged: (v) => setState(() => selectedGender = v),
+                  decoration: _inputDecoration('Genre'),
+                  validator: (value) =>
+                      value == null ? 'Veuillez sélectionner le genre' : null,
+                ),
+                const SizedBox(height: 10),
+
+                // Âge
+                TextFormField(
+                  controller: _ageController,
+                  keyboardType: TextInputType.number,
+                  decoration: _inputDecoration('Âge (années)'),
+                  validator: (value) {
+                    if (value == null || value.isEmpty)
+                      return 'Veuillez entrer l’âge';
+                    final v = int.tryParse(value);
+                    if (v == null || v <= 0) return 'Âge invalide';
+                    if (v > 120) return 'L’âge ne doit pas dépasser 120 ans';
+                    return null;
+                  },
+                ),
+                const SizedBox(height: 10),
+
+                // Activité
+                DropdownButtonFormField<String>(
+                  value: selectedActivity,
+                  items: const [
+                    DropdownMenuItem(
+                      value: 'sedentary',
+                      child: Text('Sédentaire'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'light',
+                      child: Text('Légèrement actif'),
+                    ),
+                    DropdownMenuItem(
+                      value: 'moderate',
+                      child: Text('Modérément actif'),
+                    ),
+                    DropdownMenuItem(value: 'active', child: Text('Actif')),
+                    DropdownMenuItem(
+                      value: 'very_active',
+                      child: Text('Très actif'),
+                    ),
+                  ],
+                  onChanged: (v) => setState(() => selectedActivity = v),
+                  decoration: _inputDecoration('Niveau d\'activité'),
+                  validator: (value) => value == null
+                      ? 'Veuillez sélectionner le niveau d’activité'
+                      : null,
+                ),
+                const SizedBox(height: 20),
+
+                // Save button
+                _saving
+                    ? const CircularProgressIndicator()
+                    : ElevatedButton(
+                        onPressed: _saveEntry,
+                        child: Text(
+                          isEditing ? 'Mettre à jour' : 'Enregistrer',
+                        ),
+                      ),
+                if (_message != null) ...[
+                  const SizedBox(height: 20),
+                  Text(
+                    _message!,
+                    style: const TextStyle(
+                      color: Colors.green,
+                      fontWeight: FontWeight.bold,
+                    ),
+                  ),
+                ],
+              ],
+            ),
           ),
         ),
       ),
