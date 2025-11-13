@@ -39,6 +39,10 @@ class HealthEntry extends HiveObject {
 
   @HiveField(11)
   double weight;
+  @HiveField(12)
+  int caloriesBurnedDuration; // in minutes
+  @HiveField(13)
+  String exerciseType;
 
   HealthEntry({
     this.id,
@@ -53,8 +57,9 @@ class HealthEntry extends HiveObject {
     required this.activityLevel,
     required this.height,
     required this.weight,
+    this.caloriesBurnedDuration = 0,
+    this.exerciseType = 'None',
   });
-
   // For SQLite
   Map<String, dynamic> toMap() => {
     'id': id,
@@ -69,6 +74,8 @@ class HealthEntry extends HiveObject {
     'activityLevel': activityLevel,
     'weight': weight,
     'height': height,
+    'caloriesBurnedDuration': caloriesBurnedDuration,
+    'exerciseType': exerciseType,
   };
 
   factory HealthEntry.fromMap(Map<String, dynamic> map) => HealthEntry(
@@ -84,5 +91,7 @@ class HealthEntry extends HiveObject {
     activityLevel: map['activityLevel'],
     weight: map['weight'],
     height: map['height'],
+    caloriesBurnedDuration: map['caloriesBurnedDuration'] ?? 0,
+    exerciseType: map['exerciseType'] ?? 'None',
   );
 }

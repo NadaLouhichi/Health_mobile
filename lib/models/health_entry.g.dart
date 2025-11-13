@@ -29,13 +29,15 @@ class HealthEntryAdapter extends TypeAdapter<HealthEntry> {
       activityLevel: fields[9] as String,
       height: fields[10] as double,
       weight: fields[11] as double,
+      caloriesBurnedDuration: fields[12] as int,
+      exerciseType: fields[13] as String,
     );
   }
 
   @override
   void write(BinaryWriter writer, HealthEntry obj) {
     writer
-      ..writeByte(12)
+      ..writeByte(14)
       ..writeByte(0)
       ..write(obj.id)
       ..writeByte(1)
@@ -59,7 +61,11 @@ class HealthEntryAdapter extends TypeAdapter<HealthEntry> {
       ..writeByte(10)
       ..write(obj.height)
       ..writeByte(11)
-      ..write(obj.weight);
+      ..write(obj.weight)
+      ..writeByte(12)
+      ..write(obj.caloriesBurnedDuration)
+      ..writeByte(13)
+      ..write(obj.exerciseType);
   }
 
   @override

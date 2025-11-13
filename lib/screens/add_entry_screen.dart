@@ -29,13 +29,15 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
   @override
   void initState() {
     super.initState();
-    // Prefill fields if editing
     if (widget.entry != null) {
       _weightController.text = widget.entry!.weight.toString();
       _heightController.text = widget.entry!.height.toString();
       ageController.text = widget.entry!.age.toString();
       selectedGender = widget.entry!.gender;
       selectedActivity = widget.entry!.activityLevel;
+      selectedExercise = widget.entry!.exerciseType;
+      _durationController.text = widget.entry!.caloriesBurnedDuration
+          .toString();
     }
   }
 
@@ -75,7 +77,9 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
       date: widget.entry?.date ?? DateTime.now(),
       bmi: bmi,
       caloriesBurned: caloriesBurned,
+      caloriesBurnedDuration: duration,
       caloriesConsumed: widget.entry?.caloriesConsumed ?? 0,
+      exerciseType: selectedExercise ?? 'None',
       bmr: bmr,
       dailyCalories: daily,
       gender: gender,
@@ -136,6 +140,7 @@ class _AddEntryScreenState extends State<AddEntryScreen> {
                 items: const [
                   DropdownMenuItem(value: 'Running', child: Text('Running')),
                   DropdownMenuItem(value: 'Cycling', child: Text('Cycling')),
+                  DropdownMenuItem(value: 'Walking', child: Text('Walking')),
                   DropdownMenuItem(value: 'Swimming', child: Text('Swimming')),
                   DropdownMenuItem(
                     value: 'None',
